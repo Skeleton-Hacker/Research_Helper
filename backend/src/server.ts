@@ -1,38 +1,37 @@
 import express from 'express';
-import cors from 'cors';
 import path from 'path';
-import bodyParser from 'body-parser';
-
-// Import routes
+import cors from 'cors';
 import projectRoutes from './routes/projects';
+import noteRoutes from './routes/notes';
+import citationRoutes from './routes/citations';
+import taskRoutes from './routes/tasks'; // Add this line
 
-// Initialize Express app
+// Create Express app
 const app = express();
-const PORT = 3000;
 
-// Middleware
+// Middlewares
+app.use(express.json());
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
-// Serve static files from the data directory
-app.use('/data', express.static(path.join(__dirname, '../../data')));
-
-// Set up routes
+// API Routes
 app.use('/api/projects', projectRoutes);
+app.use('/api/notes', noteRoutes);
+app.use('/api/citations', citationRoutes);
+app.use('/api/tasks', taskRoutes); // Add this line
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({ message: 'Research Helper API is running' });
-});
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/dist', 'index.html'));
+  });
+}
 
-// Start the server
+// Start server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
 
-// Handle graceful shutdown
-process.on('SIGINT', () => {
-  console.log('Server is shutting down...');
-  process.exit(0);
-});
+export default app;
