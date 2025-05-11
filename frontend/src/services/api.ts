@@ -34,6 +34,18 @@ interface CreateCitationParams {
   project_id: number;
 }
 
+// Update the Note interface to include file path
+interface Note {
+  id: number;
+  title: string;
+  content: string;
+  file_path: string; // New field to store path to the note file
+  tags: string[];
+  project_id: number;
+  created_at: string;
+  versions: any[];
+}
+
 // API service for making HTTP requests
 const api = {
   // Project APIs
@@ -89,11 +101,72 @@ const api = {
     }
   },
   
-  // Note APIs - to be implemented
+  // Note APIs
   notes: {
-    // Placeholder functions to be implemented when API endpoints are available
-    getAll: async () => [],
-    create: async () => ({})
+    getAll: async (): Promise<Note[]> => {
+      try {
+        const response = await fetch(`${API_URL}/notes`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching notes:', error);
+        throw error;
+      }
+    },
+    
+    create: async (params: {
+      title: string;
+      content: string;
+      tags: string[];
+      project_id: number;
+    }): Promise<Note> => {
+      try {
+        const response = await fetch(`${API_URL}/notes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(params),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Error creating note:', error);
+        throw error;
+      }
+    },
+    
+    update: async (id: number, params: {
+      title: string;
+      content: string;
+      tags: string[];
+      project_id: number;
+    }): Promise<Note> => {
+      try {
+        const response = await fetch(`${API_URL}/notes/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(params),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error(`Error updating note ${id}:`, error);
+        throw error;
+      }
+    },
   },
   
   // Citation APIs

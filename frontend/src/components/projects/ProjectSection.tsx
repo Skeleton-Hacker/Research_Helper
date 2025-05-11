@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Divider } from '@mui/material';
-import ProjectForm from './ProjectForm';
-import ProjectList from './ProjectList';
+import { 
+  Box, Typography, Button, Grid, Card, CardContent, 
+  CardActions, TextField, Dialog, DialogTitle, 
+  DialogContent, DialogActions, Chip, IconButton,
+  CardHeader, Skeleton
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import FolderIcon from '@mui/icons-material/Folder';
 import api from '../../services/api';
 
 export interface Project {
@@ -14,8 +21,9 @@ function ProjectSection() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
 
-  // Load projects on component mount
   useEffect(() => {
     fetchProjects();
   }, []);
@@ -34,30 +42,147 @@ function ProjectSection() {
     }
   };
 
-  const handleProjectCreated = (newProject: Project) => {
-    setProjects([newProject, ...projects]);
+  const handleCreateProject = async () => {
+    if (!newProjectName.trim()) return;
+    
+    try {
+      const newProject = await api.projects.create(newProjectName);
+      setProjects([...projects, newProject]);
+      setNewProjectName('');
+      setDialogOpen(false);
+    } catch (err) {
+      setError('Failed to create project');
+      console.error('Error creating project:', err);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  // Loading skeleton for projects
+  const renderSkeletons = () => {
+    return Array(3).fill(0).map((_, index) => (
+      <Grid item xs={12} sm={6} md={4} key={`skeleton-${index}`}>
+        <Card elevation={3}>
+          <CardHeader
+            avatar={<Skeleton variant="circular" width={40} height={40} />}
+            title={<Skeleton variant="text" width="80%" />}
+            subheader={<Skeleton variant="text" width="40%" />}
+          />
+          <CardContent>
+            <Skeleton variant="rectangular" width="100%" height={30} />
+          </CardContent>
+          <CardActions>
+            <Skeleton variant="rectangular" width={60} height={30} />
+            <Skeleton variant="rectangular" width={60} height={30} />
+          </CardActions>
+        </Card>
+      </Grid>
+    ));
   };
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>Projects</Typography>
-      
-      <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" gutterBottom>Create New Project</Typography>
-        <ProjectForm onProjectCreated={handleProjectCreated} />
-      </Paper>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Projects</Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          startIcon={<AddIcon />}
+          onClick={() => setDialogOpen(true)}
+        >
+          New Project
+        </Button>
+      </Box>
 
-      <Divider sx={{ my: 4 }} />
-      
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>Your Projects</Typography>
-        <ProjectList 
-          projects={projects} 
-          loading={loading} 
-          error={error} 
-          onRefresh={fetchProjects} 
-        />
-      </Paper>
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+
+      <Grid container spacing={3}>
+        {loading ? (
+          renderSkeletons()
+        ) : projects.length === 0 ? (
+          <Grid item xs={12}>
+            <Card sx={{ textAlign: 'center', p: 3, backgroundColor: '#f5f5f5' }}>
+              <Typography variant="h6">No projects yet</Typography>
+              <Typography variant="body1" sx={{ mt: 1 }}>
+                Click "New Project" to create your first research project
+              </Typography>
+            </Card>
+          </Grid>
+        ) : (
+          projects.map(project => (
+            <Grid item xs={12} sm={6} md={4} key={project.id}>
+              <Card elevation={3} sx={{ 
+                height: '100%', 
+                display: 'flex', 
+                flexDirection: 'column',
+                transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-5px)',
+                  boxShadow: 6
+                }
+              }}>
+                <CardHeader
+                  avatar={<FolderIcon color="primary" />}
+                  title={project.name}
+                  subheader={`Created: ${formatDate(project.created_at)}`}
+                />
+                <CardContent sx={{ flexGrow: 1 }}>
+                  {/* Project stats could go here (count of notes, citations, tasks) */}
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip label="Click to view details" variant="outlined" size="small" />
+                  </Box>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'flex-end' }}>
+                  <IconButton size="small" title="Edit project">
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" title="Delete project">
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))
+        )}
+      </Grid>
+
+      {/* New Project Dialog */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+        <DialogTitle>Create New Project</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Project Name"
+            fullWidth
+            variant="outlined"
+            value={newProjectName}
+            onChange={(e) => setNewProjectName(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') handleCreateProject();
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handleCreateProject} 
+            variant="contained" 
+            color="primary"
+            disabled={!newProjectName.trim()}
+          >
+            Create
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

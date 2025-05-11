@@ -12,36 +12,19 @@ class ProjectModel {
    * @param name Project name
    * @returns Promise resolving to the new project ID
    */
-  create(name: string): Promise<number> {
-    return new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO projects (name) VALUES (?)',
-        [name],
-        function(err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(this.lastID);
-          }
-        }
-      );
-    });
+  async create(name: string): Promise<number> {
+    // Use the Promise-based API
+    const result = await db.run('INSERT INTO projects (name) VALUES (?)', [name]);
+    return result.lastID;
   }
 
   /**
    * Get all projects
    * @returns Promise resolving to array of projects
    */
-  getAll(): Promise<Project[]> {
-    return new Promise((resolve, reject) => {
-      db.all('SELECT * FROM projects ORDER BY created_at DESC', [], (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows as Project[]);
-        }
-      });
-    });
+  async getAll(): Promise<Project[]> {
+    // Use the Promise-based API
+    return await db.all<Project>('SELECT * FROM projects ORDER BY created_at DESC');
   }
 
   /**
@@ -49,16 +32,10 @@ class ProjectModel {
    * @param id Project ID
    * @returns Promise resolving to the project or null if not found
    */
-  getById(id: number): Promise<Project | null> {
-    return new Promise((resolve, reject) => {
-      db.get('SELECT * FROM projects WHERE id = ?', [id], (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(row as Project || null);
-        }
-      });
-    });
+  async getById(id: number): Promise<Project | null> {
+    // Use the Promise-based API
+    const project = await db.get<Project>('SELECT * FROM projects WHERE id = ?', [id]);
+    return project || null;
   }
 }
 
