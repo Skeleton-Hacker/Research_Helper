@@ -1,6 +1,26 @@
 {
-  "devDependencies": {
-    "concurrently": "^9.1.2",
+  "name": "research-helper",
+  "version": "1.0.0",
+  "description": "A desktop application to manage research projects, notes, and papers",
+  "main": "dist/main.js",
+  "scripts": {
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:backend && npm run build:frontend && tsc",
+    "start": "electron .",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"tsc -w\"",
+    "electron-dev": "wait-on http://localhost:5173 && electron ."
+  },
+  "dependencies": {
     "electron": "^36.2.0"
+  },
+  "devDependencies": {
+    "@types/electron": "^1.6.10",
+    "@types/node": "^20.10.0",
+    "concurrently": "^9.1.2",
+    "typescript": "^5.3.2",
+    "wait-on": "^7.2.0"
   }
 }
