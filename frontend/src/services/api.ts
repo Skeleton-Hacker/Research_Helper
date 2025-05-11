@@ -16,6 +16,24 @@ interface Task {
   created_at: string;
 }
 
+// Add Citation interface
+interface Citation {
+  id: number;
+  title: string;
+  url: string;
+  file_path: string;
+  annotations: any[];
+  project_id: number;
+  created_at: string;
+}
+
+// Add a proper interface for citation creation parameters
+interface CreateCitationParams {
+  title: string;
+  url: string;
+  project_id: number;
+}
+
 // API service for making HTTP requests
 const api = {
   // Project APIs
@@ -78,11 +96,43 @@ const api = {
     create: async () => ({})
   },
   
-  // Citation APIs - to be implemented
+  // Citation APIs
   citations: {
-    // Placeholder functions to be implemented when API endpoints are available
-    getAll: async () => [],
-    create: async () => ({})
+    // Get all citations
+    getAll: async (): Promise<Citation[]> => {
+      try {
+        const response = await fetch(`${API_URL}/citations`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching citations:', error);
+        throw error;
+      }
+    },
+    
+    // Create a new citation
+    create: async (params: CreateCitationParams): Promise<Citation> => {
+      try {
+        const response = await fetch(`${API_URL}/citations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(params),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Error creating citation:', error);
+        throw error;
+      }
+    }
   },
   
   // Add tasks API
@@ -141,6 +191,26 @@ const api = {
         return await response.json();
       } catch (error) {
         console.error('Error updating task status:', error);
+        throw error;
+      }
+    }
+  },
+  
+  // Add the arXiv API endpoints
+  arxiv: {
+    search: async (query: string, start = 0, maxResults = 10) => {
+      try {
+        const response = await fetch(
+          `${API_URL}/arxiv/search?query=${encodeURIComponent(query)}&start=${start}&max_results=${maxResults}`
+        );
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Error searching arXiv:', error);
         throw error;
       }
     }

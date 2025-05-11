@@ -4,7 +4,8 @@ import cors from 'cors';
 import projectRoutes from './routes/projects';
 import noteRoutes from './routes/notes';
 import citationRoutes from './routes/citations';
-import taskRoutes from './routes/tasks'; // Add this line
+import taskRoutes from './routes/tasks';
+import arxivRoutes from './routes/arxiv'; // Add this import
 
 // Create Express app
 const app = express();
@@ -17,7 +18,8 @@ app.use(cors());
 app.use('/api/projects', projectRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/citations', citationRoutes);
-app.use('/api/tasks', taskRoutes); // Add this line
+app.use('/api/tasks', taskRoutes);
+app.use('/api/arxiv', arxivRoutes); // Add this line
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
