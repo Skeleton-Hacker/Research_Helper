@@ -3,20 +3,17 @@ import {
   TextField, Button, Box, Alert, CircularProgress, 
   FormControl, InputLabel, Select, MenuItem, SelectChangeEvent
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { Project } from '../projects/ProjectSection';
-import { Task } from './TaskSection';
+import { Citation } from './CitationSection';
 
-interface TaskFormProps {
+interface CitationFormProps {
   projects: Project[];
-  onTaskCreated: (task: Task) => void;
+  onCitationCreated: (citation: Citation) => void;
 }
 
-function TaskForm({ projects, onTaskCreated }: TaskFormProps) {
+function CitationForm({ projects, onCitationCreated }: CitationFormProps) {
   const [title, setTitle] = useState('');
-  const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [url, setUrl] = useState('');
   const [projectId, setProjectId] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +23,7 @@ function TaskForm({ projects, onTaskCreated }: TaskFormProps) {
     e.preventDefault();
     
     if (!title.trim()) {
-      setError('Please enter a task title');
+      setError('Please enter a citation title');
       return;
     }
 
@@ -41,25 +38,26 @@ function TaskForm({ projects, onTaskCreated }: TaskFormProps) {
       
       // This would call the API when the endpoint is available
       // For now, create a mock response
-      const newTask: Task = {
+      const newCitation: Citation = {
         id: Date.now(), // Temporary ID
         title,
-        due_date: dueDate ? dueDate.toISOString() : null,
-        status: 'pending',
+        url,
+        file_path: `projects/${projectId}/papers/${title.toLowerCase().replace(/\s+/g, '_')}.pdf`,
+        annotations: [],
         project_id: projectId as number,
         created_at: new Date().toISOString()
       };
       
       // Update UI
-      onTaskCreated(newTask);
+      onCitationCreated(newCitation);
       setSuccess(true);
       resetForm();
       
       // Reset success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError('Failed to create task');
-      console.error('Error creating task:', err);
+      setError('Failed to create citation');
+      console.error('Error creating citation:', err);
     } finally {
       setLoading(false);
     }
@@ -67,7 +65,7 @@ function TaskForm({ projects, onTaskCreated }: TaskFormProps) {
 
   const resetForm = () => {
     setTitle('');
-    setDueDate(null);
+    setUrl('');
     setProjectId('');
   };
 
@@ -78,7 +76,7 @@ function TaskForm({ projects, onTaskCreated }: TaskFormProps) {
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>Task created successfully</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>Citation added successfully</Alert>}
       
       <TextField
         label="Title"
@@ -87,6 +85,15 @@ function TaskForm({ projects, onTaskCreated }: TaskFormProps) {
         onChange={(e) => setTitle(e.target.value)}
         margin="normal"
         required
+        disabled={loading}
+      />
+      
+      <TextField
+        label="URL"
+        fullWidth
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        margin="normal"
         disabled={loading}
       />
       
@@ -107,21 +114,6 @@ function TaskForm({ projects, onTaskCreated }: TaskFormProps) {
         </Select>
       </FormControl>
       
-      <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <DatePicker
-          label="Due Date"
-          value={dueDate}
-          onChange={(newValue) => setDueDate(newValue)}
-          slotProps={{
-            textField: { 
-              fullWidth: true,
-              margin: "normal",
-              disabled: loading
-            }
-          }}
-        />
-      </LocalizationProvider>
-      
       <Button
         type="submit"
         variant="contained"
@@ -129,10 +121,10 @@ function TaskForm({ projects, onTaskCreated }: TaskFormProps) {
         disabled={loading}
         sx={{ mt: 2 }}
       >
-        {loading ? <CircularProgress size={24} /> : 'Create Task'}
+        {loading ? <CircularProgress size={24} /> : 'Add Citation'}
       </Button>
     </Box>
   );
 }
 
-export default TaskForm;
+export default CitationForm;

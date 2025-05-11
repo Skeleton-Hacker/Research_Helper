@@ -1,84 +1,165 @@
-import { BrowserRouter as Router, HashRouter, Routes, Route, Link } from 'react-router-dom';
-import { Box, CssBaseline, Drawer, AppBar, Toolbar, List, Typography, Divider, ListItem, ListItemIcon, ListItemText, Container } from '@mui/material';
+import { useState } from 'react';
+import { 
+  Box, 
+  CssBaseline, 
+  Container, 
+  Typography, 
+  AppBar, 
+  Toolbar,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Divider
+} from '@mui/material';
+import ProjectSection from './components/projects/ProjectSection';
+import NoteSection from './components/notes/NoteSection';
+import CitationSection from './components/citations/CitationSection';
+import TaskSection from './components/tasks/TaskSection';
+
+// Import icons for the sidebar
 import FolderIcon from '@mui/icons-material/Folder';
 import NoteIcon from '@mui/icons-material/Note';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import ChecklistIcon from '@mui/icons-material/Checklist';
+import TaskIcon from '@mui/icons-material/CheckCircleOutline';
 
-// Placeholder components for pages
-const Projects = () => <Box><Typography variant="h4">Projects</Typography><Typography>Projects will be listed here</Typography></Box>;
-const Notes = () => <Box><Typography variant="h4">Notes</Typography><Typography>Notes will be listed here</Typography></Box>;
-const Citations = () => <Box><Typography variant="h4">Citations</Typography><Typography>Citations will be listed here</Typography></Box>;
-const Tasks = () => <Box><Typography variant="h4">Tasks</Typography><Typography>Tasks will be listed here</Typography></Box>;
-
-// Drawer width
+// Define drawer width
 const drawerWidth = 240;
 
-function App() {
-  // Use HashRouter for Electron to avoid path issues
-  const RouterComponent = window.Electron ? HashRouter : Router;
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
 
   return (
-    <RouterComponent>
-      <Box sx={{ display: 'flex' }}>
-        <CssBaseline />
-        
-        {/* Top app bar */}
-        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-          <Toolbar>
-            <Typography variant="h6" noWrap component="div">
-              Research Helper
-            </Typography>
-          </Toolbar>
-        </AppBar>
-        
-        {/* Sidebar navigation */}
-        <Drawer
-          variant="permanent"
-          sx={{
-            width: drawerWidth,
-            flexShrink: 0,
-            [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
-          }}
-        >
-          <Toolbar /> {/* Empty toolbar to offset content below app bar */}
-          <Box sx={{ overflow: 'auto' }}>
-            <List>
-              <ListItem button component={Link} to="/">
-                <ListItemIcon><FolderIcon /></ListItemIcon>
-                <ListItemText primary="Projects" />
-              </ListItem>
-              <ListItem button component={Link} to="/notes">
-                <ListItemIcon><NoteIcon /></ListItemIcon>
-                <ListItemText primary="Notes" />
-              </ListItem>
-              <ListItem button component={Link} to="/citations">
-                <ListItemIcon><MenuBookIcon /></ListItemIcon>
-                <ListItemText primary="Citations" />
-              </ListItem>
-              <ListItem button component={Link} to="/tasks">
-                <ListItemIcon><ChecklistIcon /></ListItemIcon>
-                <ListItemText primary="Tasks" />
-              </ListItem>
-            </List>
-            <Divider />
-          </Box>
-        </Drawer>
-        
-        {/* Main content */}
-        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-          <Toolbar /> {/* Empty toolbar to offset content below app bar */}
-          <Container>
-            <Routes>
-              <Route path="/" element={<Projects />} />
-              <Route path="/notes" element={<Notes />} />
-              <Route path="/citations" element={<Citations />} />
-              <Route path="/tasks" element={<Tasks />} />
-            </Routes>
-          </Container>
-        </Box>
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`sidebar-tabpanel-${index}`}
+      aria-labelledby={`sidebar-tab-${index}`}
+      {...other}
+      style={{ width: '100%' }}
+    >
+      {value === index && <Box>{children}</Box>}
+    </div>
+  );
+}
+
+function App() {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const handleListItemClick = (index: number) => {
+    setSelectedIndex(index);
+  };
+
+  return (
+    <Box sx={{ display: 'flex', height: '100vh' }}>
+      <CssBaseline />
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Research Helper
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      
+      {/* Sidebar Drawer */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: drawerWidth,
+          flexShrink: 0,
+          [`& .MuiDrawer-paper`]: { 
+            width: drawerWidth, 
+            boxSizing: 'border-box',
+            marginTop: '64px' // Adjust based on AppBar height
+          },
+        }}
+      >
+        <List>
+          <ListItem disablePadding>
+            <ListItemButton
+              selected={selectedIndex === 0}
+              onClick={() => handleListItemClick(0)}
+            >
+              <ListItemIcon>
+                <FolderIcon />
+              </ListItemIcon>
+              <ListItemText primary="Projects" />
+            </ListItemButton>
+          </ListItem>
+          
+          <ListItem disablePadding>
+            <ListItemButton
+              selected={selectedIndex === 1}
+              onClick={() => handleListItemClick(1)}
+            >
+              <ListItemIcon>
+                <NoteIcon />
+              </ListItemIcon>
+              <ListItemText primary="Notes" />
+            </ListItemButton>
+          </ListItem>
+          
+          <ListItem disablePadding>
+            <ListItemButton
+              selected={selectedIndex === 2}
+              onClick={() => handleListItemClick(2)}
+            >
+              <ListItemIcon>
+                <MenuBookIcon />
+              </ListItemIcon>
+              <ListItemText primary="Citations" />
+            </ListItemButton>
+          </ListItem>
+          
+          <ListItem disablePadding>
+            <ListItemButton
+              selected={selectedIndex === 3}
+              onClick={() => handleListItemClick(3)}
+            >
+              <ListItemIcon>
+                <TaskIcon />
+              </ListItemIcon>
+              <ListItemText primary="Tasks" />
+            </ListItemButton>
+          </ListItem>
+        </List>
+        <Divider />
+      </Drawer>
+      
+      {/* Main content */}
+      <Box
+        component="main"
+        sx={{ 
+          flexGrow: 1, 
+          p: 3,
+          marginTop: '64px', // Adjust based on AppBar height
+          overflow: 'auto'
+        }}
+      >
+        <Container maxWidth="lg">
+          <TabPanel value={selectedIndex} index={0}>
+            <ProjectSection />
+          </TabPanel>
+          <TabPanel value={selectedIndex} index={1}>
+            <NoteSection />
+          </TabPanel>
+          <TabPanel value={selectedIndex} index={2}>
+            <CitationSection />
+          </TabPanel>
+          <TabPanel value={selectedIndex} index={3}>
+            <TaskSection />
+          </TabPanel>
+        </Container>
       </Box>
-    </RouterComponent>
+    </Box>
   );
 }
 
