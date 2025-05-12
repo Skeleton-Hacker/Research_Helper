@@ -26,7 +26,7 @@ function ProjectForm({ onProjectCreated }: ProjectFormProps) {
       setError(null);
       
       // Call the API to create a new project
-      const newProject = await api.projects.create(name);
+      const newProject = await api.projects.create({name});
       
       // Update UI
       onProjectCreated(newProject);

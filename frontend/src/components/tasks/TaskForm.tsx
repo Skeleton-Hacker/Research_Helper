@@ -44,7 +44,7 @@ function TaskForm({ projects, onTaskCreated }: TaskFormProps) {
       const newTask: Task = {
         id: Date.now(), // Temporary ID
         title,
-        due_date: dueDate ? dueDate.toISOString() : null,
+        due_date: dueDate ? dueDate.toISOString() : undefined, // Use undefined instead of null
         status: 'pending',
         project_id: projectId as number,
         created_at: new Date().toISOString()

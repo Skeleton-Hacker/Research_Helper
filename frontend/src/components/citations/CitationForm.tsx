@@ -4,7 +4,19 @@ import {
   FormControl, InputLabel, Select, MenuItem, SelectChangeEvent
 } from '@mui/material';
 import { Project } from '../projects/ProjectSection';
-import { Citation } from './CitationSection';
+
+export interface Citation {
+  id: number;
+  title: string;
+  authors: string;
+  publication: string;
+  year: number;
+  url: string;
+  doi: string;
+  project_id: number;
+  created_at: string;
+  file_path?: string; // Add this optional field
+}
 
 interface CitationFormProps {
   projects: Project[];
@@ -38,13 +50,24 @@ function CitationForm({ projects, onCitationCreated }: CitationFormProps) {
       
       // This would call the API when the endpoint is available
       // For now, create a mock response
+      const citationData = {
+        title,
+        authors: '',
+        publication: '',
+        year: new Date().getFullYear(),
+        url,
+        doi: '',
+        project_id: projectId as number
+      };
+
+      const fileInfo = {
+        file_path: `projects/${projectId}/papers/${title.toLowerCase().replace(/\s+/g, '_')}.pdf`
+      };
+
       const newCitation: Citation = {
         id: Date.now(), // Temporary ID
-        title,
-        url,
-        file_path: `projects/${projectId}/papers/${title.toLowerCase().replace(/\s+/g, '_')}.pdf`,
-        annotations: [],
-        project_id: projectId as number,
+        ...citationData,
+        ...fileInfo,
         created_at: new Date().toISOString()
       };
       

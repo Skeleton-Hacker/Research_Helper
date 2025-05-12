@@ -5,7 +5,17 @@ import {
   SelectChangeEvent
 } from '@mui/material';
 import { Project } from '../projects/ProjectSection';
-import { Note } from './NoteSection';
+
+export interface Note {
+  id: number;
+  title: string;
+  content: string;
+  project_id: number;
+  created_at: string;
+  updated_at: string;
+  tags: string[];
+  versions?: any[]; // Add this optional field
+}
 
 interface NoteFormProps {
   projects: Project[];
@@ -41,13 +51,18 @@ function NoteForm({ projects, onNoteCreated }: NoteFormProps) {
       
       // This would call the API when the endpoint is available
       // For now, create a mock response
-      const newNote: Note = {
-        id: Date.now(), // Temporary ID
+      const noteData = {
         title,
         content,
-        tags,
-        project_id: projectId as number,
+        project_id: projectId,
+        tags: tags || []
+      };
+      
+      const newNote: Note = {
+        id: Date.now(), // Temporary ID
+        ...noteData,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         versions: []
       };
       

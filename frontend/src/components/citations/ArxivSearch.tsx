@@ -94,7 +94,11 @@ function ArxivSearch({ projects, onPaperAdded }: ArxivSearchProps) {
       const citationData = {
         title: `${selectedPaper.title} [arXiv:${arxivId}]`,
         url: selectedPaper.pdf_url || selectedPaper.arxiv_url,
-        project_id: selectedProjectId as number
+        project_id: selectedProjectId as number,
+        authors: selectedPaper.authors.join(', '), // Add authors field
+        publication: 'arXiv', // Add publication field
+        year: new Date(selectedPaper.published).getFullYear(), // Add year field
+        doi: '' // Add doi field
       };
 
       // Pass the variable to the API call

@@ -1,216 +1,266 @@
 import { useState, useEffect } from 'react';
 import { 
-  Box, Typography, Button, Grid, Card, CardContent, 
-  CardActions, TextField, Dialog, DialogTitle, 
-  DialogContent, DialogActions, Chip, IconButton,
-  CardHeader, Skeleton
+  Box, Typography, Card, CardContent, Grid, Button, 
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, CircularProgress, IconButton, Snackbar,
+  Alert, CardActions
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import FolderIcon from '@mui/icons-material/Folder';
+// import FolderIcon from '@mui/icons-material/Folder';
 import api from '../../services/api';
-import ProjectDetail from './ProjectDetail';
 
 export interface Project {
   id: number;
   name: string;
+  description?: string;
   created_at: string;
 }
 
-function ProjectSection() {
+interface ProjectSectionProps {
+  onProjectSelect: (project: Project) => void;
+}
+
+function ProjectSection({ onProjectSelect }: ProjectSectionProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [newProjectName, setNewProjectName] = useState('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
+  const [openDialog, setOpenDialog] = useState(false);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [showProjectDetail, setShowProjectDetail] = useState(false);
 
   useEffect(() => {
     fetchProjects();
   }, []);
 
   const fetchProjects = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
       const data = await api.projects.getAll();
       setProjects(data);
-      setError(null);
     } catch (err) {
+      console.error('Error fetching projects:', err);
       setError('Failed to load projects');
-      console.error('Error loading projects:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateProject = async () => {
-    if (!newProjectName.trim()) return;
+    if (!projectName.trim()) {
+      setError('Project name is required');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
     
     try {
-      const newProject = await api.projects.create(newProjectName);
-      setProjects([...projects, newProject]);
-      setNewProjectName('');
-      setDialogOpen(false);
+      // If currentProject exists, update it; otherwise create a new one
+      let updatedProject: Project;
+      
+      if (currentProject) {
+        updatedProject = await api.projects.update(currentProject.id, {
+          name: projectName,
+          description: projectDescription
+        }) as Project;
+        
+        // Update the project in the list
+        setProjects(projects.map(p => 
+          p.id === updatedProject.id ? updatedProject : p
+        ));
+        setSuccessMessage('Project updated successfully');
+      } else {
+        const newProject = await api.projects.create({
+          name: projectName,
+          description: projectDescription
+        }) as Project;
+        
+        setProjects([...projects, newProject]);
+        setSuccessMessage('Project created successfully');
+      }
+      
+      handleCloseDialog();
     } catch (err) {
-      setError('Failed to create project');
-      console.error('Error creating project:', err);
+      console.error('Error saving project:', err);
+      setError('Failed to save project');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleProjectClick = (project: Project) => {
-    console.log('Project clicked:', project);
-    setSelectedProject(project);
-    setShowProjectDetail(true);
+  const handleOpenDialog = (project: Project | null = null) => {
+    setCurrentProject(project);
+    
+    if (project) {
+      setProjectName(project.name);
+      setProjectDescription(project.description || '');
+    } else {
+      setProjectName('');
+      setProjectDescription('');
+    }
+    
+    setOpenDialog(true);
   };
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setCurrentProject(null);
+    setProjectName('');
+    setProjectDescription('');
+    setError(null);
+  };
+  
+  const handleEditProject = (event: React.MouseEvent, project: Project) => {
+    // Stop propagation to prevent triggering the card click
+    event.stopPropagation();
+    handleOpenDialog(project);
   };
 
-  // Loading skeleton for projects
-  const renderSkeletons = () => {
-    return Array(3).fill(0).map((_, index) => (
-      <Grid item xs={12} sm={6} md={4} key={`skeleton-${index}`}>
-        <Card elevation={3}>
-          <CardHeader
-            avatar={<Skeleton variant="circular" width={40} height={40} />}
-            title={<Skeleton variant="text" width="80%" />}
-            subheader={<Skeleton variant="text" width="40%" />}
-          />
-          <CardContent>
-            <Skeleton variant="rectangular" width="100%" height={30} />
-          </CardContent>
-          <CardActions>
-            <Skeleton variant="rectangular" width={60} height={30} />
-            <Skeleton variant="rectangular" width={60} height={30} />
-          </CardActions>
-        </Card>
-      </Grid>
-    ));
+  const handleDeleteProject = async (projectId: number) => {
+    if (window.confirm("Are you sure you want to delete this project? This will also delete all associated notes, citations, and tasks.")) {
+      try {
+        await api.projects.delete(projectId);
+        // Update the projects list
+        setProjects(projects.filter(project => project.id !== projectId));
+        setSuccessMessage('Project deleted successfully');
+        
+        // If the deleted project was selected, clear selection
+        if (selectedProject && selectedProject.id === projectId) {
+          setSelectedProject(null);
+        }
+      } catch (err) {
+        console.error('Error deleting project:', err);
+        setError('Failed to delete project');
+      }
+    }
   };
 
   return (
     <Box>
-      {!showProjectDetail ? (
-        <>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h4">Projects</Typography>
-            <Button 
-              variant="contained" 
-              color="primary" 
-              startIcon={<AddIcon />}
-              onClick={() => setDialogOpen(true)}
-            >
-              New Project
-            </Button>
-          </Box>
-
-          {error && (
-            <Typography color="error" sx={{ mb: 2 }}>
-              {error}
-            </Typography>
-          )}
-
-          <Grid container spacing={3}>
-            {loading ? (
-              renderSkeletons()
-            ) : projects.length === 0 ? (
-              <Grid item xs={12}>
-                <Card sx={{ textAlign: 'center', p: 3, backgroundColor: '#f5f5f5' }}>
-                  <Typography variant="h6">No projects yet</Typography>
-                  <Typography variant="body1" sx={{ mt: 1 }}>
-                    Click "New Project" to create your first research project
-                  </Typography>
-                </Card>
-              </Grid>
-            ) : (
-              projects.map(project => (
-                <Grid item xs={12} sm={6} md={4} key={project.id}>
-                  <Card 
-                    elevation={3} 
-                    sx={{ 
-                      height: '100%', 
-                      display: 'flex', 
-                      flexDirection: 'column',
-                      transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-                      '&:hover': {
-                        transform: 'translateY(-5px)',
-                        boxShadow: 6
-                      },
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => handleProjectClick(project)}
-                  >
-                    <CardHeader
-                      avatar={<FolderIcon color="primary" />}
-                      title={project.name}
-                      subheader={`Created: ${formatDate(project.created_at)}`}
-                    />
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip label="Click to view details" variant="outlined" size="small" />
-                      </Box>
-                    </CardContent>
-                    <CardActions sx={{ justifyContent: 'flex-end' }}>
-                      <IconButton size="small" title="Edit project">
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" title="Delete project">
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </CardActions>
-                  </Card>
-                </Grid>
-              ))
-            )}
-          </Grid>
-
-          <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-            <DialogTitle>Create New Project</DialogTitle>
-            <DialogContent>
-              <TextField
-                autoFocus
-                margin="dense"
-                label="Project Name"
-                fullWidth
-                variant="outlined"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') handleCreateProject();
-                }}
-              />
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button 
-                onClick={handleCreateProject} 
-                variant="contained" 
-                color="primary"
-                disabled={!newProjectName.trim()}
-              >
-                Create
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </>
-      ) : (
-        <>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <Button variant="outlined" onClick={() => setShowProjectDetail(false)} sx={{ mr: 2 }}>
-              Back to Projects
-            </Button>
-            <Typography variant="h4">{selectedProject?.name}</Typography>
-          </Box>
-          <Box>
-            <ProjectDetail project={selectedProject!} />
-          </Box>
-        </>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Projects</Typography>
+        <Button 
+          variant="contained"
+          color="primary"
+          onClick={() => handleOpenDialog()}
+          id="new-project-button"
+        >
+          New Project
+        </Button>
+      </Box>
+      
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
       )}
+      
+      {loading && projects.length === 0 ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : projects.length > 0 ? (
+        <Grid container spacing={3}>
+          {projects.map((project) => (
+            <Grid item xs={12} sm={6} md={4} key={project.id}>
+              <Card 
+                elevation={3}
+                sx={{ cursor: 'pointer', '&:hover': { boxShadow: 6 } }}
+                onClick={() => onProjectSelect(project)}
+              >
+                <CardContent>
+                  <Typography variant="h6">{project.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Created: {new Date(project.created_at).toLocaleDateString()}
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'flex-end' }}>
+                  <IconButton 
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent card click from triggering
+                      handleEditProject(e, project);
+                    }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton 
+                    size="small" 
+                    color="error" 
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent card click from triggering
+                      handleDeleteProject(project.id);
+                    }}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <Typography>No projects yet. Create your first project to get started.</Typography>
+      )}
+      
+      {/* Project Create/Edit Dialog */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>{currentProject ? 'Edit Project' : 'New Project'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Project Name"
+            fullWidth
+            variant="outlined"
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            required
+            error={!projectName.trim()}
+            helperText={!projectName.trim() ? 'Project name is required' : ''}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Description (Optional)"
+            fullWidth
+            variant="outlined"
+            value={projectDescription}
+            onChange={(e) => setProjectDescription(e.target.value)}
+            multiline
+            rows={3}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button 
+            onClick={handleCreateProject} 
+            variant="contained" 
+            color="primary"
+            disabled={!projectName.trim() || loading}
+          >
+            {loading ? <CircularProgress size={24} /> : currentProject ? 'Save' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Success message snackbar */}
+      <Snackbar 
+        open={!!successMessage} 
+        autoHideDuration={3000} 
+        onClose={() => setSuccessMessage('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" sx={{ width: '100%' }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

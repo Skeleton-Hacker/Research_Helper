@@ -1,60 +1,97 @@
 import { 
-  List, Typography, Box, Chip,
-  CircularProgress, Accordion, AccordionSummary, AccordionDetails
+  Box, Typography, Card, CardContent, CardActions, 
+  Grid, IconButton, Tooltip
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { Note } from './NoteSection';
 
 interface NoteListProps {
   notes: Note[];
   loading: boolean;
   error: string | null;
+  onEdit?: (noteId: number) => void;
+  onDelete?: (noteId: number) => void;
 }
 
-function NoteList({ notes, loading, error }: NoteListProps) {
-  // Format the date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-  };
-
-  if (loading) {
-    return <Box display="flex" justifyContent="center"><CircularProgress /></Box>;
-  }
-
+function NoteList({ notes, loading, error, onEdit, onDelete }: NoteListProps) {
   if (error) {
     return <Typography color="error">{error}</Typography>;
   }
-
-  if (notes.length === 0) {
-    return <Typography>No notes found. Create your first note above.</Typography>;
+  
+  if (notes.length === 0 && !loading) {
+    return <Typography>No notes found.</Typography>;
   }
+  
+  // Function to truncate text if it's too long
+  const truncate = (text: string, maxLength: number) => {
+    return text.length > maxLength 
+      ? text.substring(0, maxLength) + '...' 
+      : text;
+  };
 
   return (
-    <List sx={{ width: '100%' }}>
-      {notes.map((note) => (
-        <Box key={note.id}>
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle1">{note.title}</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography paragraph sx={{ whiteSpace: 'pre-wrap' }}>
+    <Grid container spacing={3}>
+      {notes.map(note => (
+        <Grid item xs={12} md={6} key={note.id}>
+          <Card elevation={3} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flexGrow: 1 }}>
+              <Typography variant="h6" gutterBottom>
+                {truncate(note.title, 50)} {/* Apply truncation to titles */}
+              </Typography>
+              
+              <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                <AccessTimeIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
+                <Typography variant="caption" color="text.secondary">
+                  {note.updated_at ? new Date(note.updated_at).toLocaleString() : new Date(note.created_at).toLocaleString()}
+                </Typography>
+              </Box>
+              
+              <Typography variant="body2" sx={{ 
+                whiteSpace: 'pre-wrap', 
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: '4',
+                WebkitBoxOrient: 'vertical',
+              }}>
                 {note.content}
               </Typography>
-              <Box sx={{ mt: 2, display: 'flex', gap: 0.5 }}>
-                {note.tags.map((tag, index) => (
-                  <Chip key={index} label={tag} size="small" color="primary" variant="outlined" />
-                ))}
-              </Box>
-              <Typography variant="caption" display="block" sx={{ mt: 2 }}>
-                Created: {formatDate(note.created_at)}
-              </Typography>
-            </AccordionDetails>
-          </Accordion>
-        </Box>
+            </CardContent>
+            
+            {(onEdit || onDelete) && (
+              <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+                {onEdit && (
+                  <Tooltip title="Edit">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => onEdit(note.id)}
+                      aria-label="edit note"
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                
+                {onDelete && (
+                  <Tooltip title="Delete">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => onDelete(note.id)}
+                      aria-label="delete note"
+                      color="error"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </CardActions>
+            )}
+          </Card>
+        </Grid>
       ))}
-    </List>
+    </Grid>
   );
 }
 

@@ -1,85 +1,111 @@
 import { 
-  List, ListItem, ListItemText, Typography, Divider, Box,
-  CircularProgress, Link, Button
+  Box, Typography, Card, CardContent, CardActions, 
+  Grid, IconButton, Tooltip, Link
 } from '@mui/material';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import DescriptionIcon from '@mui/icons-material/Description';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import LinkIcon from '@mui/icons-material/Link';
 import { Citation } from './CitationSection';
 
 interface CitationListProps {
   citations: Citation[];
   loading: boolean;
   error: string | null;
+  onEdit?: (citationId: number) => void;
+  onDelete?: (citationId: number) => void;
 }
 
-function CitationList({ citations, loading, error }: CitationListProps) {
-  // Format the date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-  };
-
-  const handleOpenFile = (filePath: string) => {
-    // In a real app, this would trigger Electron to open the file
-    // For now, just log to console
-    console.log(`Opening file: ${filePath}`);
-    alert(`In production, this would open: ${filePath}`);
-  };
-
-  if (loading) {
-    return <Box display="flex" justifyContent="center"><CircularProgress /></Box>;
-  }
-
+function CitationList({ citations, loading, error, onEdit, onDelete }: CitationListProps) {
   if (error) {
     return <Typography color="error">{error}</Typography>;
   }
-
-  if (citations.length === 0) {
-    return <Typography>No citations found. Add your first citation above.</Typography>;
+  
+  if (citations.length === 0 && !loading) {
+    return <Typography>No citations found.</Typography>;
   }
 
   return (
-    <List sx={{ width: '100%' }}>
-      {citations.map((citation, index) => (
-        <Box key={citation.id}>
-          <ListItem alignItems="flex-start">
-            <ListItemText
-              primary={citation.title}
-              secondary={
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
-                  {citation.url && (
-                    <Link href={citation.url} target="_blank" rel="noopener noreferrer" display="flex" alignItems="center" sx={{ mr: 1 }}>
-                      <OpenInNewIcon fontSize="small" sx={{ mr: 0.5 }} />
-                      {citation.url}
-                    </Link>
+    <Grid container spacing={3}>
+      {citations.map(citation => (
+        <Grid item xs={12} md={6} key={citation.id}>
+          <Card elevation={3} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flexGrow: 1 }}>
+              <Typography variant="h6" gutterBottom>{citation.title}</Typography>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                <strong>Authors:</strong> {citation.authors}
+              </Typography>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                <strong>Publication:</strong> {citation.publication}
+                {citation.year ? ` (${citation.year})` : ''}
+              </Typography>
+              
+              {(citation.doi || citation.url) && (
+                <Box sx={{ mt: 2 }}>
+                  {citation.doi && (
+                    <Tooltip title="View DOI">
+                      <Link 
+                        href={`https://doi.org/${citation.doi}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}
+                      >
+                        <LinkIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        DOI: {citation.doi}
+                      </Link>
+                    </Tooltip>
                   )}
                   
-                  <Box display="flex" alignItems="center">
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<DescriptionIcon />}
-                      onClick={() => handleOpenFile(citation.file_path)}
-                      sx={{ mr: 1 }}
-                    >
-                      Open PDF
-                    </Button>
-                    <Typography variant="caption">
-                      {citation.file_path}
-                    </Typography>
-                  </Box>
-                  
-                  <Typography variant="caption" display="block">
-                    Added: {formatDate(citation.created_at)}
-                  </Typography>
+                  {citation.url && (
+                    <Tooltip title="Open URL">
+                      <Link 
+                        href={citation.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ display: 'flex', alignItems: 'center' }}
+                      >
+                        <LinkIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        View Source
+                      </Link>
+                    </Tooltip>
+                  )}
                 </Box>
-              }
-            />
-          </ListItem>
-          {index < citations.length - 1 && <Divider />}
-        </Box>
+              )}
+            </CardContent>
+            
+            {(onEdit || onDelete) && (
+              <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+                {onEdit && (
+                  <Tooltip title="Edit">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => onEdit(citation.id)}
+                      aria-label="edit citation"
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                
+                {onDelete && (
+                  <Tooltip title="Delete">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => onDelete(citation.id)}
+                      aria-label="delete citation"
+                      color="error"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </CardActions>
+            )}
+          </Card>
+        </Grid>
       ))}
-    </List>
+    </Grid>
   );
 }
 

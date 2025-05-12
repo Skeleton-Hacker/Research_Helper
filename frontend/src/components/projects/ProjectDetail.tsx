@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { 
   Box, Typography, Grid, Paper, Tabs, Tab, 
-  Button, Divider, CircularProgress
+  Button, Divider, CircularProgress, IconButton
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import api from '../../services/api';
-import NoteList from '../notes/NoteList';
 import CitationList from '../citations/CitationList';
 import TaskList from '../tasks/TaskList';
+import EditableNote from '../notes/EditableNote';
 import { Project } from './ProjectSection';
 import { Note } from '../notes/NoteSection';
 import { Citation } from '../citations/CitationSection';
@@ -14,15 +15,17 @@ import { Task } from '../tasks/TaskSection';
 
 interface ProjectDetailProps {
   project: Project;
+  onBack: () => void; // New prop for handling back navigation
 }
 
-function ProjectDetail({ project }: ProjectDetailProps) {
+function ProjectDetail({ project, onBack }: ProjectDetailProps) {
   const [tabValue, setTabValue] = useState(0);
   const [notes, setNotes] = useState<Note[]>([]);
   const [citations, setCitations] = useState<Citation[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
+  const [isAddingNote, setIsAddingNote] = useState(false);
   
   useEffect(() => {
     fetchProjectData();
@@ -38,7 +41,14 @@ function ProjectDetail({ project }: ProjectDetailProps) {
       
       // Fetch all notes
       const allNotes = await api.notes.getAll();
-      const projectNotes = allNotes.filter(note => note.project_id === project.id);
+      // Transform notes to ensure they match the Note interface
+      const projectNotes = allNotes
+        .filter(note => note.project_id === project.id)
+        .map(note => ({
+          ...note,
+          updated_at: note.updated_at || note.created_at, // Ensure updated_at is never undefined
+          tags: note.tags || [] // Ensure tags is never undefined
+        })) as Note[];
       setNotes(projectNotes);
       
       // Fetch all citations
@@ -53,7 +63,8 @@ function ProjectDetail({ project }: ProjectDetailProps) {
         .filter(task => task.project_id === project.id)
         .map(task => ({
           ...task,
-          status: validateTaskStatus(task.status)
+          status: validateTaskStatus(task.status),
+          due_date: task.due_date === null ? undefined : task.due_date // Handle null due_date
         })) as Task[];
       setTasks(projectTasks);
       
@@ -85,6 +96,79 @@ function ProjectDetail({ project }: ProjectDetailProps) {
       task.id === taskId ? {...task, status: newStatus} : task
     ));
   };
+
+  const handleEditTask = async (taskId: number) => {
+    // Implementation for editing a task
+    // This could open a dialog to edit the task
+    console.log(`Edit task with ID: ${taskId}`);
+  };
+
+  const handleDeleteTask = async (taskId: number) => {
+    if (window.confirm("Are you sure you want to delete this task?")) {
+      try {
+        await api.tasks.delete(taskId);
+        // Update the tasks list
+        setTasks(tasks.filter(task => task.id !== taskId));
+      } catch (err) {
+        console.error('Error deleting task:', err);
+        setError('Failed to delete task');
+      }
+    }
+  };
+
+  const handleSaveNote = async (noteData: any) => {
+    try {
+      if (noteData.id) {
+        // Update existing note
+        const apiResponse = await api.notes.update(noteData.id, {
+          title: noteData.title,
+          content: noteData.content,
+          project_id: project.id, // Add the project_id from the current project
+          tags: noteData.tags || []
+        });
+        
+        // Transform to ensure it matches Note interface
+        const updatedNote: Note = {
+          ...apiResponse,
+          updated_at: apiResponse.updated_at || apiResponse.created_at, // Ensure updated_at is never undefined
+          tags: apiResponse.tags || [] // Ensure tags is never undefined
+        };
+        
+        setNotes(notes.map(n => n.id === updatedNote.id ? updatedNote : n));
+      } else {
+        // Create new note
+        const apiResponse = await api.notes.create({
+          title: noteData.title,
+          content: noteData.content,
+          project_id: project.id,
+          tags: []
+        });
+        
+        // Transform to ensure it matches Note interface
+        const newNote: Note = {
+          ...apiResponse,
+          updated_at: apiResponse.updated_at || apiResponse.created_at, // Ensure updated_at is never undefined
+          tags: apiResponse.tags || [] // Ensure tags is never undefined
+        };
+        
+        setNotes([...notes, newNote]);
+        setIsAddingNote(false);
+      }
+    } catch (err) {
+      console.error('Error saving note:', err);
+      setError('Failed to save note');
+    }
+  };
+
+  const handleDeleteNote = async (noteId: number) => {
+    try {
+      await api.notes.delete(noteId);
+      setNotes(notes.filter(n => n.id !== noteId));
+    } catch (err) {
+      console.error('Error deleting note:', err);
+      setError('Failed to delete note');
+    }
+  };
   
   if (loading) {
     return (
@@ -96,6 +180,14 @@ function ProjectDetail({ project }: ProjectDetailProps) {
   
   return (
     <Box>
+      {/* Add back button at the top */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <IconButton onClick={onBack} sx={{ mr: 1 }}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h4">{project.name}</Typography>
+      </Box>
+
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom>{project.name}</Typography>
         <Typography variant="body2" color="text.secondary">
@@ -135,13 +227,34 @@ function ProjectDetail({ project }: ProjectDetailProps) {
         
         {tabValue === 0 && (
           <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="contained" color="primary">Add Note</Button>
-            </Box>
-            {notes.length > 0 ? (
-              <NoteList notes={notes} loading={false} error={null} />
+            {isAddingNote ? (
+              <EditableNote
+                note={{ project_id: project.id }}
+                onSave={handleSaveNote}
+                isNew={true}
+              />
             ) : (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setIsAddingNote(true)}
+                sx={{ mb: 2 }}
+              >
+                ADD NOTE
+              </Button>
+            )}
+
+            {notes.length === 0 && !isAddingNote ? (
               <Typography>No notes yet. Add your first note to this project.</Typography>
+            ) : (
+              notes.map(note => (
+                <EditableNote
+                  key={note.id}
+                  note={note}
+                  onSave={handleSaveNote}
+                  onDelete={handleDeleteNote}
+                />
+              ))
             )}
           </Box>
         )}
@@ -165,7 +278,14 @@ function ProjectDetail({ project }: ProjectDetailProps) {
               <Button variant="contained" color="primary">Add Task</Button>
             </Box>
             {tasks.length > 0 ? (
-              <TaskList tasks={tasks} loading={false} error={null} onStatusUpdate={handleTaskStatusUpdate} />
+              <TaskList 
+                tasks={tasks} 
+                loading={false} 
+                error={null} 
+                onStatusUpdate={handleTaskStatusUpdate}
+                onEdit={handleEditTask}
+                onDelete={handleDeleteTask} 
+              />
             ) : (
               <Typography>No tasks yet. Add your first task to this project.</Typography>
             )}
