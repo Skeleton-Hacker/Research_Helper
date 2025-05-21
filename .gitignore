@@ -136,3 +136,4 @@ dist
 .pnp.*
 
 data/projects/*
+data/research_helper.db

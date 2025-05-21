@@ -12,6 +12,8 @@ import { Project } from './ProjectSection';
 import { Note } from '../notes/NoteSection';
 import { Citation } from '../citations/CitationSection';
 import { Task } from '../tasks/TaskSection';
+import ArxivSearch from '../citations/ArxivSearch';
+import CitationDialog from '../citations/CitationDialog';
 
 interface ProjectDetailProps {
   project: Project;
@@ -26,6 +28,9 @@ function ProjectDetail({ project, onBack }: ProjectDetailProps) {
   const [loading, setLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [citationDialogOpen, setCitationDialogOpen] = useState(false);
+  const [newCitation, setNewCitation] = useState<Citation | null>(null);
+  const [_successMessage, setSuccessMessage] = useState<string | null>(null);
   
   useEffect(() => {
     fetchProjectData();
@@ -262,13 +267,69 @@ function ProjectDetail({ project, onBack }: ProjectDetailProps) {
         {tabValue === 1 && (
           <Box>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="contained" color="primary">Add Citation</Button>
+              <Button 
+                variant="contained" 
+                color="primary"
+                onClick={() => {
+                  // Fix: Cast as Citation to include all required properties
+                  const newCitationData = {
+                    id: 0, // Use a temporary ID for new citations
+                    title: '',
+                    authors: '',
+                    publication: '',
+                    year: new Date().getFullYear(),
+                    url: '',
+                    doi: '',
+                    project_id: project.id,
+                    created_at: new Date().toISOString() // Add current date as string
+                  } as Citation; // Cast to Citation type
+                  
+                  setCitationDialogOpen(true);
+                  setNewCitation(newCitationData);
+                }}
+              >
+                ADD CITATION
+              </Button>
             </Box>
+            
+            <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: '#f9f9f9' }}>
+              <Typography variant="subtitle1" gutterBottom>Search arXiv</Typography>
+              <ArxivSearch
+                projects={[project]}
+                onPaperAdded={() => {
+                  fetchProjectData();
+                }}
+              />
+            </Paper>
+            
             {citations.length > 0 ? (
               <CitationList citations={citations} loading={false} error={null} />
             ) : (
               <Typography>No citations yet. Add your first citation to this project.</Typography>
             )}
+            
+            {/* Citation Dialog */}
+            <CitationDialog 
+              open={citationDialogOpen}
+              onClose={() => setCitationDialogOpen(false)}
+              citation={newCitation}
+              projects={[project]}
+              onSave={async (citationData) => {
+                try {
+                  await api.citations.create({
+                    ...citationData,
+                    project_id: project.id
+                  });
+                  setCitationDialogOpen(false);
+                  fetchProjectData();
+                  setSuccessMessage('Citation added successfully');
+                  setTimeout(() => setSuccessMessage(''), 3000);
+                } catch (err) {
+                  console.error('Error adding citation:', err);
+                  setError('Failed to add citation');
+                }
+              }}
+            />
           </Box>
         )}
         

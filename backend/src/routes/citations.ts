@@ -4,6 +4,7 @@ import { validateProjectExists } from '../utils/validators';
 import axios from 'axios';
 import path from 'path';
 import fs from 'fs';
+import { parseString } from 'xml2js'; // Add this import
 
 const router = express.Router();
 const researchHelperDir = path.join(__dirname, '..', '..', '..', 'research_helper');
@@ -21,6 +22,15 @@ interface DBCitation {
 
 interface Citation extends Omit<DBCitation, 'annotations'> {
   annotations: any[]; // Converted to array after parsing
+}
+
+interface ArxivPaper {
+  id: string;
+  title: string;
+  authors: string[];
+  summary: string;
+  pdf_url: string;
+  published: string;
 }
 
 // Helper function to extract error messages
@@ -58,6 +68,58 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * GET /api/citations/search/arxiv
+ * Searches for papers on ArXiv
+ * Query parameters:
+ * - query: search term
+ * - max_results: maximum number of results (default: 10)
+ */
+router.get('/search/arxiv', async (req, res) => {
+  try {
+    const query = req.query.query as string;
+    const maxResults = parseInt(req.query.max_results as string || '10');
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+    
+    // Format query for ArXiv API
+    const formattedQuery = query.replace(/\s+/g, '+');
+    const arxivUrl = `http://export.arxiv.org/api/query?search_query=all:${formattedQuery}&start=0&max_results=${maxResults}`;
+    
+    const response = await axios.get(arxivUrl);
+    const papers: ArxivPaper[] = [];
+    
+    // Parse XML response
+    parseString(response.data, (err, result) => {
+      if (err) {
+        throw new Error('Failed to parse ArXiv response');
+      }
+      
+      if (result.feed && result.feed.entry) {
+        for (const entry of result.feed.entry) {
+          // Extract relevant information
+          const paper: ArxivPaper = {
+            id: entry.id[0],
+            title: entry.title[0].trim(),
+            authors: entry.author ? entry.author.map((a: any) => a.name[0]) : [],
+            summary: entry.summary ? entry.summary[0].trim() : '',
+            pdf_url: entry.id[0].replace('http://arxiv.org/abs/', 'http://arxiv.org/pdf/') + '.pdf',
+            published: entry.published ? entry.published[0] : ''
+          };
+          papers.push(paper);
+        }
+      }
+    });
+    
+    res.json(papers);
+  } catch (err) {
+    console.error('Error searching ArXiv:', err);
+    res.status(500).json({ error: 'Failed to search ArXiv: ' + getErrorMessage(err) });
+  }
+});
+
+/**
  * POST /api/citations
  * Creates a new citation, downloads the PDF, and stores its metadata
  * Body should contain:
@@ -74,14 +136,15 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Title, URL, and project_id are required' });
     }
     
-    // Use async-await instead of callbacks
-    const projectExists = await checkIfProjectExists(project_id);
-    if (!projectExists) {
+    // Get the project name from the database
+    const project = await db.get('SELECT name FROM projects WHERE id = ?', [project_id]);
+    if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
-    
-    // Create directory for project papers
-    const projectDir = path.join(researchHelperDir, 'projects', project_id.toString(), 'papers');
+    const sanitizedProjectName = project.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+    // Create directory for project papers using project name
+    const projectDir = path.join('data', 'projects', sanitizedProjectName, 'papers');
     fs.mkdirSync(projectDir, { recursive: true });
     
     // Generate a file name based on title (sanitize it)
@@ -91,7 +154,7 @@ router.post('/', async (req, res) => {
       .replace(/_+/g, '_') + '.pdf';
     
     const filePath = path.join(projectDir, fileName);
-    const relativeFilePath = path.join('research_helper', 'projects', project_id.toString(), 'papers', fileName);
+    const relativeFilePath = path.relative(process.cwd(), filePath);
     
     // Download the PDF
     console.log(`Downloading PDF from ${url}...`);
@@ -139,6 +202,42 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error('Error processing citation:', err);
     res.status(500).json({ error: 'Failed to process citation: ' + getErrorMessage(err) });
+  }
+});
+
+/**
+ * GET /api/citations/pdf/:id
+ * Serves the PDF file for a specific citation
+ */
+router.get('/pdf/:id', async (req, res) => {
+  try {
+    const citationId = req.params.id;
+    
+    // Get citation to find file path
+    const citation = await db.get<DBCitation>('SELECT * FROM citations WHERE id = ?', [citationId]);
+    
+    if (!citation) {
+      return res.status(404).json({ error: 'Citation not found' });
+    }
+    
+    // Resolve the file path relative to current directory
+    const filePath = path.resolve(process.cwd(), citation.file_path);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'PDF file not found' });
+    }
+    
+    // Set appropriate headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${path.basename(filePath)}"`);
+    
+    // Create read stream and pipe to response
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } catch (err) {
+    console.error('Error serving PDF:', err);
+    res.status(500).json({ error: 'Failed to serve PDF: ' + getErrorMessage(err) });
   }
 });
 
