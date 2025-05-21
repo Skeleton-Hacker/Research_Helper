@@ -239,9 +239,9 @@ function TaskSection() {
       )}
       
       {projects.length === 0 && !loading && (
-        <Typography sx={{ mb: 2 }}>
+        <Alert severity="info" sx={{ mb: 2 }}>
           Please create a project first before adding tasks.
-        </Typography>
+        </Alert>
       )}
       
       {loading && tasks.length === 0 ? (

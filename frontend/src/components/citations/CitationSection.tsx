@@ -208,11 +208,11 @@ function CitationSection() {
           {error}
         </Typography>
       )}
-      
+
       {projects.length === 0 && !loading && (
-        <Typography sx={{ mb: 2 }}>
+        <Alert severity="info" sx={{ mb: 2 }}>
           Please create a project first before adding citations.
-        </Typography>
+        </Alert>
       )}
       
       {loading && citations.length === 0 ? (
