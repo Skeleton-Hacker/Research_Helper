@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Box, Typography, Grid, Paper, Tabs, Tab, 
-  Button, Divider, CircularProgress, IconButton
+  Button, Divider, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, TextField, DialogActions
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import api from '../../services/api';
@@ -31,6 +31,13 @@ function ProjectDetail({ project, onBack }: ProjectDetailProps) {
   const [citationDialogOpen, setCitationDialogOpen] = useState(false);
   const [newCitation, setNewCitation] = useState<Citation | null>(null);
   const [_successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Add these state variables to your component
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskDueDate, setNewTaskDueDate] = useState('');
+  const [currentTask, setCurrentTask] = useState<Task | null>(null);
   
   useEffect(() => {
     fetchProjectData();
@@ -103,9 +110,20 @@ function ProjectDetail({ project, onBack }: ProjectDetailProps) {
   };
 
   const handleEditTask = async (taskId: number) => {
-    // Implementation for editing a task
-    // This could open a dialog to edit the task
-    console.log(`Edit task with ID: ${taskId}`);
+    // Find the task by ID
+    const taskToEdit = tasks.find(task => task.id === taskId);
+    if (taskToEdit) {
+      // Set current task data in the form fields
+      setNewTaskTitle(taskToEdit.title);
+      setNewTaskDescription(taskToEdit.description || '');
+      setNewTaskDueDate(taskToEdit.due_date || '');
+      
+      // Store the task being edited
+      setCurrentTask(taskToEdit);
+      
+      // Open the dialog
+      setTaskDialogOpen(true);
+    }
   };
 
   const handleDeleteTask = async (taskId: number) => {
@@ -172,6 +190,38 @@ function ProjectDetail({ project, onBack }: ProjectDetailProps) {
     } catch (err) {
       console.error('Error deleting note:', err);
       setError('Failed to delete note');
+    }
+  };
+
+  const handleAddTask = async (taskData: Partial<Task>) => {
+    try {
+      // Make sure we have a title before calling the API
+      if (!taskData.title) {
+        setError('Task title is required');
+        return;
+      }
+      
+      // Create the task with the project ID
+      const rawNewTask = await api.tasks.create({
+        title: taskData.title, // Now this is guaranteed to be a string
+        project_id: project.id,
+        due_date: taskData.due_date
+      });
+      
+      // Transform the response to match your interface
+      const newTask: Task = {
+        ...rawNewTask,
+        status: validateTaskStatus(rawNewTask.status),
+        due_date: rawNewTask.due_date === null ? undefined : rawNewTask.due_date
+      };
+      
+      // Add the new task to the tasks list
+      setTasks([...tasks, newTask]);
+      setSuccessMessage('Task added successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error adding task:', err);
+      setError('Failed to add task');
     }
   };
   
@@ -336,7 +386,13 @@ function ProjectDetail({ project, onBack }: ProjectDetailProps) {
         {tabValue === 2 && (
           <Box>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="contained" color="primary">Add Task</Button>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={() => setTaskDialogOpen(true)}
+              >
+                ADD TASK
+              </Button>
             </Box>
             {tasks.length > 0 ? (
               <TaskList 
@@ -353,6 +409,84 @@ function ProjectDetail({ project, onBack }: ProjectDetailProps) {
           </Box>
         )}
       </Paper>
+
+      {/* Task Dialog */}
+      <Dialog open={taskDialogOpen} onClose={() => setTaskDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{currentTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Task Title"
+            type="text"
+            fullWidth
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            required
+            error={!newTaskTitle.trim()}
+            helperText={!newTaskTitle.trim() ? "Title is required" : ""}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Due Date"
+            type="date"
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            value={newTaskDueDate}
+            onChange={(e) => setNewTaskDueDate(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={newTaskDescription}
+            onChange={(e) => setNewTaskDescription(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTaskDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={() => {
+              if (!newTaskTitle.trim()) return;
+              
+              if (currentTask) {
+                // Update existing task
+                const updatedTask = {
+                  ...currentTask,
+                  title: newTaskTitle,
+                  description: newTaskDescription,
+                  due_date: newTaskDueDate || undefined
+                };
+                setTasks(tasks.map(task => task.id === currentTask.id ? updatedTask : task));
+              } else {
+                // Add new task
+                handleAddTask({
+                  title: newTaskTitle,
+                  description: newTaskDescription,
+                  due_date: newTaskDueDate || undefined,
+                  status: 'pending',
+                  project_id: project.id
+                });
+              }
+              
+              // Close dialog and reset values
+              setTaskDialogOpen(false);
+              setNewTaskTitle('');
+              setNewTaskDescription('');
+              setNewTaskDueDate('');
+              setCurrentTask(null);
+            }} 
+            color="primary"
+          >
+            {currentTask ? 'Save Changes' : 'Add Task'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

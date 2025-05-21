@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Box, Container, CssBaseline } from '@mui/material';
+
+import { Box, Container, CssBaseline, AppBar, Toolbar, Typography } from '@mui/material';
 import { Sidebar } from './components/Layout';
 import ProjectSection from './components/projects/ProjectSection';
 import ProjectDetail from './components/projects/ProjectDetail';
@@ -30,6 +31,15 @@ function App() {
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <CssBaseline />
+      
+      {/* Blue header bar */}
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: "#1976d2" }}>
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div" sx={{ color: "white", fontWeight: "600" }}>
+            Research Helper
+          </Typography>
+        </Toolbar>
+      </AppBar>
       
       <Sidebar onNavigate={handleNavigation} currentView={currentView} />
       

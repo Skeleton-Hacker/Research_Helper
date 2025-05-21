@@ -109,4 +109,61 @@ router.post('/', async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/projects/:id
+ * Delete a project and all associated data
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    
+    // First, get the project to check if it exists and get its directory path
+    const project = await db.get('SELECT * FROM projects WHERE id = ?', [projectId]);
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    // Begin a transaction to ensure database integrity
+    await db.run('BEGIN TRANSACTION');
+    
+    try {
+      // Delete all tasks associated with this project
+      await db.run('DELETE FROM tasks WHERE project_id = ?', [projectId]);
+      
+      // Delete all notes associated with this project
+      await db.run('DELETE FROM notes WHERE project_id = ?', [projectId]);
+      
+      // Delete all citations associated with this project
+      await db.run('DELETE FROM citations WHERE project_id = ?', [projectId]);
+      
+      // Finally delete the project itself
+      await db.run('DELETE FROM projects WHERE id = ?', [projectId]);
+      
+      // Commit the transaction
+      await db.run('COMMIT');
+      
+      // If the project has a directory path, try to delete it
+      if (project.directory_path) {
+        try {
+          await fs.rm(project.directory_path, { recursive: true, force: true });
+          console.log(`Project directory deleted: ${project.directory_path}`);
+        } catch (fsErr) {
+          console.error(`Warning: Could not delete project directory: ${project.directory_path}`, fsErr);
+          // We don't fail the request if directory deletion fails
+        }
+      }
+      
+      res.json({ message: 'Project deleted successfully' });
+    } catch (txErr) {
+      // Roll back the transaction if anything fails
+      await db.run('ROLLBACK');
+      throw txErr;
+    }
+  } catch (err) {
+    console.error('Error deleting project:', err);
+    res.status(500).json({ error: 'Failed to delete project' });
+  }
+});
+
 export default router;

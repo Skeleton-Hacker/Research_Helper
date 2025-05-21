@@ -79,12 +79,53 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ title = "Research Helper" }) => {
   return (
-    <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+    <AppBar 
+      position="fixed" 
+      sx={{ 
+        zIndex: (theme) => theme.zIndex.drawer + 1,
+        bgcolor: "#1976d2", // Vibrant blue color
+        color: "white",
+        boxShadow: 3
+      }}
+    >
       <Toolbar>
-        <Typography variant="h6" noWrap component="div">
+        <Typography 
+          variant="h6" 
+          noWrap 
+          component="div" 
+          sx={{ 
+            fontWeight: 600,
+            flexGrow: 1,
+            letterSpacing: 0.5,
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          <Box component="img" 
+            src="/logo.png" 
+            sx={{ height: 28, mr: 1, display: { xs: 'none', sm: 'block' } }} 
+            alt=""
+          />
           {title}
         </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {/* You could add additional dashboard elements here */}
+          {/* For example: notifications, user profile, etc. */}
+        </Box>
       </Toolbar>
+      {/* Optional: Add a second toolbar for additional dashboard elements or metrics */}
+      <Box 
+        sx={{ 
+          bgcolor: "rgba(255,255,255,0.1)", 
+          display: "flex", 
+          px: 2, 
+          py: 0.5,
+          justifyContent: "space-between"
+        }}
+      >
+        <Typography variant="subtitle2">Welcome to your research workspace</Typography>
+        <Typography variant="subtitle2">{new Date().toLocaleDateString()}</Typography>
+      </Box>
     </AppBar>
   );
 };

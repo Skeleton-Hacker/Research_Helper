@@ -117,6 +117,113 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 /**
+ * PUT /api/tasks/:id
+ * Updates a task with all provided fields
+ * Body can contain:
+ * - title: string (optional)
+ * - description: string (optional)
+ * - due_date: string (optional, ISO format date)
+ * - status: string (optional)
+ * - project_id: number (optional)
+ */
+router.put('/:id', async (req, res) => {
+  try {
+    const taskId = req.params.id;
+    const { title, description, due_date, status, project_id } = req.body;
+    
+    // Verify task exists first
+    const existingTask = await db.get('SELECT * FROM tasks WHERE id = ?', [taskId]);
+    if (!existingTask) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    // If project_id is being updated, validate it exists
+    if (project_id && project_id !== existingTask.project_id) {
+      const projectExists = await validateProjectExists(project_id);
+      if (!projectExists) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+    }
+    
+    // Build the SQL update based on provided fields
+    const updates = [];
+    const params = [];
+    
+    if (title !== undefined) {
+      updates.push('title = ?');
+      params.push(title);
+    }
+    
+    if (description !== undefined) {
+      updates.push('description = ?');
+      params.push(description);
+    }
+    
+    if (due_date !== undefined) {
+      updates.push('due_date = ?');
+      params.push(due_date || null);
+    }
+    
+    if (status !== undefined) {
+      updates.push('status = ?');
+      params.push(status);
+    }
+    
+    if (project_id !== undefined) {
+      updates.push('project_id = ?');
+      params.push(project_id);
+    }
+    
+    // If there's nothing to update, return the existing task
+    if (updates.length === 0) {
+      return res.json(existingTask);
+    }
+    
+    // Add taskId as the last parameter
+    params.push(taskId);
+    
+    // Execute the update
+    await db.run(
+      `UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`,
+      params
+    );
+    
+    // Fetch and return the updated task
+    const updatedTask = await db.get<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
+    
+    if (!updatedTask) {
+      return res.status(500).json({ error: 'Task updated but failed to retrieve' });
+    }
+    
+    res.json(updatedTask);
+  } catch (err) {
+    console.error('Error updating task:', err);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
+});
+
+/**
+ * DELETE /api/tasks/:id
+ * Deletes a task by ID
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const taskId = req.params.id;
+    
+    const result = await db.run('DELETE FROM tasks WHERE id = ?', [taskId]);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    res.json({ message: 'Task deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting task:', err);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
+
+/**
  * Helper function to validate project existence
  * Returns a Promise that resolves to a boolean
  */
