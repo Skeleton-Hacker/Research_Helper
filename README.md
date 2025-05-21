@@ -32,13 +32,18 @@ Research Helper is a tool designed to assist researchers in organizing their aca
    cd research-helper
    ```
 
-2. Install backend dependencies:
+2. Install the dependencies:
+```bash
+npm install
+```
+
+3. Install backend dependencies:
    ```bash
    cd backend
    npm install
    ```
 
-3. Install frontend dependencies:
+4. Install frontend dependencies:
    ```bash
    cd ../frontend
    npm install
