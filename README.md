@@ -28,14 +28,14 @@ Research Helper is a tool designed to assist researchers in organizing their aca
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/research-helper.git
+   git clone https://github.com/Skeleton-Hacker/Research_Helper.git
    cd research-helper
    ```
 
 2. Install the dependencies:
-```bash
-npm install
-```
+   ```bash
+   npm install
+   ```
 
 3. Install backend dependencies:
    ```bash
